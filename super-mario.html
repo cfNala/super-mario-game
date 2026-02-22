@@ -54,22 +54,29 @@
             y: 300,
             width: 32,
             height: 40,
+            normalHeight: 40,
+            bigHeight: 56,
             velocityX: 0,
             velocityY: 0,
             speed: 5,
             jumpPower: -12,
             gravity: 0.5,
             grounded: false,
-            facing: 1 // 1 = right, -1 = left
+            facing: 1, // 1 = right, -1 = left
+            isBig: false, // 是否变大
+            hasMushroom: false // 是否已经吃到蘑菇
         };
 
         // 关卡数据
         const platforms = [
             // 地面
             { x: 0, y: 360, width: 800, height: 40, type: 'ground' },
-            // 平台
-            { x: 200, y: 280, width: 100, height: 20, type: 'brick' },
-            { x: 350, y: 220, width: 80, height: 20, type: 'brick' },
+            // 问号砖块（含蘑菇）
+            { x: 150, y: 280, width: 40, height: 20, type: 'question', hasMushroom: true, hit: false },
+            { x: 370, y: 220, width: 40, height: 20, type: 'question', hasMushroom: false, hit: false, givesCoin: true },
+            // 普通砖块
+            { x: 200, y: 280, width: 60, height: 20, type: 'brick' },
+            { x: 350, y: 220, width: 40, height: 20, type: 'brick' },
             { x: 500, y: 180, width: 100, height: 20, type: 'brick' },
             { x: 650, y: 280, width: 120, height: 20, type: 'brick' },
             // 管道
@@ -94,6 +101,11 @@
             { x: 600, y: 335, width: 30, height: 25, velocityX: -1.5, alive: true },
         ];
 
+        // 蘑菇
+        let mushrooms = [
+            { x: 150, y: 240, width: 32, height: 32, velocityX: 2, active: false, spawned: false }
+        ];
+
         // 旗帜（终点）
         const flag = {
             x: 750,
@@ -116,6 +128,9 @@
 
         function update() {
             if (gameOver) return;
+
+            // 更新玛丽奥尺寸
+            mario.height = mario.isBig ? mario.bigHeight : mario.normalHeight;
 
             // 左右移动
             if (keys['ArrowLeft']) {
@@ -152,8 +167,9 @@
 
             mario.grounded = false;
 
-            // 平台碰撞
+            // 平台碰撞（包括顶砖块检测）
             platforms.forEach(platform => {
+                // 从上方落地
                 if (mario.x < platform.x + platform.width &&
                     mario.x + mario.width > platform.x &&
                     mario.y + mario.height > platform.y &&
@@ -162,6 +178,32 @@
                     mario.y = platform.y - mario.height;
                     mario.velocityY = 0;
                     mario.grounded = true;
+                }
+
+                // 从下方顶砖块
+                if (platform.type === 'question' && !platform.hit &&
+                    mario.x < platform.x + platform.width &&
+                    mario.x + mario.width > platform.x &&
+                    mario.y < platform.y + platform.height &&
+                    mario.y > platform.y - 20 &&
+                    mario.velocityY < 0) {
+                    platform.hit = true;
+                    mario.velocityY = 2; // 反弹
+
+                    // 生成蘑菇或金币
+                    if (platform.hasMushroom) {
+                        const mushroom = mushrooms.find(m => !m.spawned);
+                        if (mushroom) {
+                            mushroom.active = true;
+                            mushroom.spawned = true;
+                            mushroom.x = platform.x;
+                            mushroom.y = platform.y - 32;
+                        }
+                    } else if (platform.givesCoin) {
+                        coins++;
+                        score += 100;
+                        updateUI();
+                    }
                 }
             });
 
@@ -204,7 +246,47 @@
                         updateUI();
                     } else {
                         // 被敌人碰到
-                        endGame(false);
+                        if (mario.isBig) {
+                            // 如果是大的，变小
+                            mario.isBig = false;
+                            mario.y += 16; // 调整位置
+                            mario.velocityY = -5;
+                            // 短暂无敌时间可以后续添加
+                        } else {
+                            endGame(false);
+                        }
+                    }
+                }
+            });
+
+            // 蘑菇更新和碰撞
+            mushrooms.forEach(mushroom => {
+                if (!mushroom.active) return;
+
+                // 蘑菇移动
+                mushroom.x += mushroom.velocityX;
+
+                // 蘑菇重力
+                mushroom.y += 3;
+                mushroom.y = Math.min(mushroom.y, 328);
+
+                // 蘑菇边界反弹
+                if (mushroom.x < 0 || mushroom.x + mushroom.width > canvas.width) {
+                    mushroom.velocityX *= -1;
+                }
+
+                // 与玛丽奥碰撞
+                if (mario.x < mushroom.x + mushroom.width &&
+                    mario.x + mario.width > mushroom.x &&
+                    mario.y < mushroom.y + mushroom.height &&
+                    mario.y + mario.height > mushroom.y) {
+                    if (!mario.hasMushroom) {
+                        mario.isBig = true;
+                        mario.hasMushroom = true;
+                        mario.y -= 16; // 向上调整位置
+                        mushroom.active = false;
+                        score += 1000;
+                        updateUI();
                     }
                 }
             });
@@ -238,6 +320,21 @@
                     ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
                     ctx.fillStyle = '#228B22';
                     ctx.fillRect(platform.x, platform.y, platform.width, 10);
+                } else if (platform.type === 'question') {
+                    // 问号砖块
+                    ctx.fillStyle = platform.hit ? '#8B6914' : '#FFD700';
+                    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    ctx.strokeStyle = '#8B4513';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+
+                    // 问号
+                    if (!platform.hit) {
+                        ctx.fillStyle = '#8B4513';
+                        ctx.font = 'bold 16px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('?', platform.x + platform.width / 2, platform.y + 15);
+                    }
                 } else if (platform.type === 'brick') {
                     // 砖块
                     ctx.fillStyle = '#CD853F';
@@ -296,6 +393,33 @@
                 }
             });
 
+            // 画蘑菇
+            mushrooms.forEach(mushroom => {
+                if (mushroom.active) {
+                    // 蘑菇头
+                    ctx.fillStyle = '#FF4500';
+                    ctx.beginPath();
+                    ctx.ellipse(mushroom.x + 16, mushroom.y + 10, 16, 14, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 蘑菇斑点
+                    ctx.fillStyle = '#FFFF00';
+                    ctx.beginPath();
+                    ctx.arc(mushroom.x + 10, mushroom.y + 8, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(mushroom.x + 22, mushroom.y + 8, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(mushroom.x + 16, mushroom.y + 14, 3, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 蘑菇柄
+                    ctx.fillStyle = '#FFFAF0';
+                    ctx.fillRect(mushroom.x + 10, mushroom.y + 18, 12, 14);
+                }
+            });
+
             // 画旗帜
             ctx.fillStyle = '#228B22';
             ctx.fillRect(flag.x, flag.y, 5, flag.height);
@@ -307,31 +431,41 @@
             ctx.fill();
 
             // 画玛丽奥
+            const scale = mario.isBig ? 1.4 : 1;
+            const帽子宽度 = Math.floor(24 * scale);
+            const帽子高度 = Math.floor(10 * scale);
+            const脸部宽度 = Math.floor(20 * scale);
+            const脸部高度 = Math.floor(12 * scale);
+            const身体宽度 = Math.floor(20 * scale);
+            const身体高度 = Math.floor(12 * scale);
+            const裤子宽度 = Math.floor(24 * scale);
+            const裤子高度 = Math.floor(12 * scale);
+
             // 帽子
             ctx.fillStyle = '#FF0000';
-            ctx.fillRect(mario.x + 4, mario.y, 24, 10);
+            ctx.fillRect(mario.x + 4, mario.y, 帽子宽度, 帽子高度);
 
             // 脸
             ctx.fillStyle = '#FFDAB9';
-            ctx.fillRect(mario.x + 6, mario.y + 10, 20, 12);
+            ctx.fillRect(mario.x + 6, mario.y + 帽子高度, 脸部宽度, 脸部高度);
 
             // 眼睛和胡子
             ctx.fillStyle = 'black';
             if (mario.facing === 1) {
-                ctx.fillRect(mario.x + 20, mario.y + 14, 3, 3);
-                ctx.fillRect(mario.x + 18, mario.y + 18, 6, 2);
+                ctx.fillRect(mario.x + 帽子宽度 + 1, mario.y + 帽子高度 + 4, 3, 3);
+                ctx.fillRect(mario.x + 帽子宽度 - 1, mario.y + 帽子高度 + 8, 6, 2);
             } else {
-                ctx.fillRect(mario.x + 9, mario.y + 14, 3, 3);
-                ctx.fillRect(mario.x + 8, mario.y + 18, 6, 2);
+                ctx.fillRect(mario.x + 9, mario.y + 帽子高度 + 4, 3, 3);
+                ctx.fillRect(mario.x + 8, mario.y + 帽子高度 + 8, 6, 2);
             }
 
             // 身体
             ctx.fillStyle = '#FF0000';
-            ctx.fillRect(mario.x + 6, mario.y + 22, 20, 12);
+            ctx.fillRect(mario.x + 6, mario.y + 帽子高度 + 脸部高度, 身体宽度, 身体高度);
 
             // 背带裤
             ctx.fillStyle = '#0000CD';
-            ctx.fillRect(mario.x + 4, mario.y + 28, 24, 12);
+            ctx.fillRect(mario.x + 4, mario.y + 帽子高度 + 脸部高度 + 身体高度 - 2, 裤子宽度, 裤子高度);
         }
 
         function drawCloud(x, y, size) {
@@ -378,6 +512,21 @@
             mario.y = 300;
             mario.velocityX = 0;
             mario.velocityY = 0;
+            mario.isBig = false;
+            mario.hasMushroom = false;
+
+            // 重置问号砖块
+            platforms.forEach(platform => {
+                if (platform.type === 'question') {
+                    platform.hit = false;
+                }
+            });
+
+            // 重置蘑菇
+            mushrooms.forEach(mushroom => {
+                mushroom.active = false;
+                mushroom.spawned = false;
+            });
 
             coinList.forEach(coin => coin.collected = false);
             enemies = [
