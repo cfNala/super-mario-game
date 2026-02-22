@@ -432,40 +432,40 @@
 
             // 画玛丽奥
             const scale = mario.isBig ? 1.4 : 1;
-            const帽子宽度 = Math.floor(24 * scale);
-            const帽子高度 = Math.floor(10 * scale);
-            const脸部宽度 = Math.floor(20 * scale);
-            const脸部高度 = Math.floor(12 * scale);
-            const身体宽度 = Math.floor(20 * scale);
-            const身体高度 = Math.floor(12 * scale);
-            const裤子宽度 = Math.floor(24 * scale);
-            const裤子高度 = Math.floor(12 * scale);
+            const hatWidth = Math.floor(24 * scale);
+            const hatHeight = Math.floor(10 * scale);
+            const faceWidth = Math.floor(20 * scale);
+            const faceHeight = Math.floor(12 * scale);
+            const bodyWidth = Math.floor(20 * scale);
+            const bodyHeight = Math.floor(12 * scale);
+            const pantsWidth = Math.floor(24 * scale);
+            const pantsHeight = Math.floor(12 * scale);
 
             // 帽子
             ctx.fillStyle = '#FF0000';
-            ctx.fillRect(mario.x + 4, mario.y, 帽子宽度, 帽子高度);
+            ctx.fillRect(mario.x + 4, mario.y, hatWidth, hatHeight);
 
             // 脸
             ctx.fillStyle = '#FFDAB9';
-            ctx.fillRect(mario.x + 6, mario.y + 帽子高度, 脸部宽度, 脸部高度);
+            ctx.fillRect(mario.x + 6, mario.y + hatHeight, faceWidth, faceHeight);
 
             // 眼睛和胡子
             ctx.fillStyle = 'black';
             if (mario.facing === 1) {
-                ctx.fillRect(mario.x + 帽子宽度 + 1, mario.y + 帽子高度 + 4, 3, 3);
-                ctx.fillRect(mario.x + 帽子宽度 - 1, mario.y + 帽子高度 + 8, 6, 2);
+                ctx.fillRect(mario.x + hatWidth + 1, mario.y + hatHeight + 4, 3, 3);
+                ctx.fillRect(mario.x + hatWidth - 1, mario.y + hatHeight + 8, 6, 2);
             } else {
-                ctx.fillRect(mario.x + 9, mario.y + 帽子高度 + 4, 3, 3);
-                ctx.fillRect(mario.x + 8, mario.y + 帽子高度 + 8, 6, 2);
+                ctx.fillRect(mario.x + 9, mario.y + hatHeight + 4, 3, 3);
+                ctx.fillRect(mario.x + 8, mario.y + hatHeight + 8, 6, 2);
             }
 
             // 身体
             ctx.fillStyle = '#FF0000';
-            ctx.fillRect(mario.x + 6, mario.y + 帽子高度 + 脸部高度, 身体宽度, 身体高度);
+            ctx.fillRect(mario.x + 6, mario.y + hatHeight + faceHeight, bodyWidth, bodyHeight);
 
             // 背带裤
             ctx.fillStyle = '#0000CD';
-            ctx.fillRect(mario.x + 4, mario.y + 帽子高度 + 脸部高度 + 身体高度 - 2, 裤子宽度, 裤子高度);
+            ctx.fillRect(mario.x + 4, mario.y + hatHeight + faceHeight + bodyHeight - 2, pantsWidth, pantsHeight);
         }
 
         function drawCloud(x, y, size) {
